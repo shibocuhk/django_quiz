@@ -2,7 +2,7 @@
 {% load i18n %}
 {% block title %}{% trans "Quizzes related to" %} {{ category.category }}{% endblock %}
 
-{% block content %}
+{% block container %}
 <h1>{% trans "Quizzes in the" %} <strong>{{ category.category }} </strong>{% trans "category" %}</h1>
 
   {% with object_list as quizzes %}

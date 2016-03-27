@@ -1,20 +1,19 @@
 from __future__ import unicode_literals
-import re
-import json
 
-from django.db import models
+import json
+import re
+
+from django.conf import settings
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.core.validators import MaxValueValidator
-from django.utils.translation import ugettext as _
-from django.utils.timezone import now
+from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
-from django.conf import settings
-
+from django.utils.timezone import now
+from django.utils.translation import ugettext as _
 from model_utils.managers import InheritanceManager
 
 
 class CategoryManager(models.Manager):
-
     def new_category(self, category):
         new_category = self.create(category=re.sub('\s+', '-', category)
                                    .lower())
@@ -25,7 +24,6 @@ class CategoryManager(models.Manager):
 
 @python_2_unicode_compatible
 class Category(models.Model):
-
     category = models.CharField(
         verbose_name=_("Category"),
         max_length=250, blank=True,
@@ -43,7 +41,6 @@ class Category(models.Model):
 
 @python_2_unicode_compatible
 class SubCategory(models.Model):
-
     sub_category = models.CharField(
         verbose_name=_("Sub-Category"),
         max_length=250, blank=True, null=True)
@@ -64,7 +61,6 @@ class SubCategory(models.Model):
 
 @python_2_unicode_compatible
 class Quiz(models.Model):
-
     title = models.CharField(
         verbose_name=_("Title"),
         max_length=60, blank=False)
@@ -174,7 +170,6 @@ class Quiz(models.Model):
 
 
 class ProgressManager(models.Manager):
-
     def new_progress(self, user):
         new_progress = self.create(user=user,
                                    score="")
@@ -251,8 +246,8 @@ class Progress(models.Model):
 
         Does not return anything.
         """
-        category_test = Category.objects.filter(category=question.category)\
-                                        .exists()
+        category_test = Category.objects.filter(category=question.category) \
+            .exists()
 
         if any([item is False for item in [category_test,
                                            score_to_add,
@@ -261,15 +256,15 @@ class Progress(models.Model):
                                            isinstance(possible_to_add, int)]]):
             return _("error"), _("category does not exist or invalid score")
 
-        to_find = re.escape(str(question.category)) +\
-            r",(?P<score>\d+),(?P<possible>\d+),"
+        to_find = re.escape(str(question.category)) + \
+                  r",(?P<score>\d+),(?P<possible>\d+),"
 
         match = re.search(to_find, self.score, re.IGNORECASE)
 
         if match:
             updated_score = int(match.group('score')) + abs(score_to_add)
-            updated_possible = int(match.group('possible')) +\
-                abs(possible_to_add)
+            updated_possible = int(match.group('possible')) + \
+                               abs(possible_to_add)
 
             new_score = ",".join(
                 [
@@ -302,26 +297,22 @@ class Progress(models.Model):
 
 
 class SittingManager(models.Manager):
-
     def new_sitting(self, user, quiz):
         if quiz.random_order is True:
             question_set = quiz.question_set.all() \
-                                            .select_subclasses() \
-                                            .order_by('?')
+                .select_subclasses() \
+                .order_by('?')
         else:
             question_set = quiz.question_set.all() \
-                                            .select_subclasses()
-
-        question_set = question_set.values_list('id', flat=True)
-
-        if len(question_set) == 0:
+                .select_subclasses()
+        # question_set = question_set.values_list('id', flat=True)
+        if question_set.count() == 0:
             raise ImproperlyConfigured('Question set of the quiz is empty. '
                                        'Please configure questions properly')
 
-        if quiz.max_questions and quiz.max_questions < len(question_set):
+        if quiz.max_questions and quiz.max_questions < question_set.count():
             question_set = question_set[:quiz.max_questions]
-
-        questions = ",".join(map(str, question_set)) + ","
+        questions = ",".join(map(lambda q: str(q.id), question_set)) + ","
 
         new_sitting = self.create(user=user,
                                   quiz=quiz,
@@ -336,8 +327,8 @@ class SittingManager(models.Manager):
     def user_sitting(self, user, quiz):
         if quiz.single_attempt is True and self.filter(user=user,
                                                        quiz=quiz,
-                                                       complete=True)\
-                                               .exists():
+                                                       complete=True) \
+            .exists():
             return False
 
         try:
@@ -436,7 +427,7 @@ class Sitting(models.Model):
         dividend = float(self.current_score)
         divisor = len(self._question_ids())
         if divisor < 1:
-            return 0            # prevent divide by zero error
+            return 0  # prevent divide by zero error
 
         if dividend > divisor:
             return 100
@@ -501,7 +492,7 @@ class Sitting(models.Model):
         question_ids = self._question_ids()
         questions = sorted(
             self.quiz.question_set.filter(id__in=question_ids)
-                                  .select_subclasses(),
+                .select_subclasses(),
             key=lambda q: question_ids.index(q.id))
 
         if with_answers:
@@ -515,7 +506,7 @@ class Sitting(models.Model):
     def questions_with_user_answers(self):
         return {
             q: q.user_answer for q in self.get_questions(with_answers=True)
-        }
+            }
 
     @property
     def get_max_score(self):
